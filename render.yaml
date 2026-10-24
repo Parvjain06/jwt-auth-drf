@@ -1,0 +1,28 @@
+# Render Blueprint: one free web service runs the Django API and serves the React app.
+# Render reads this file when you choose "New > Blueprint" and pick this repository.
+services:
+  - type: web
+    name: jwt-lab
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    # Free instances have no persistent disk, so the SQLite database is rebuilt on every start.
+    startCommand: python manage.py migrate --noinput && python manage.py create_demo_user && gunicorn config.wsgi --bind 0.0.0.0:$PORT
+    healthCheckPath: /api/health/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DJANGO_DEBUG
+        value: "False"
+      # Render generates two different random values; they never appear in the repository.
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: JWT_SIGNING_KEY
+        generateValue: true
+      # Render's proxy appends the visitor's IP to X-Forwarded-For; trust exactly one proxy.
+      - key: NUM_PROXIES
+        value: "1"
+      # Paste your key from thedogapi.com when Render asks for it.
+      - key: DOG_API_KEY
+        sync: false
