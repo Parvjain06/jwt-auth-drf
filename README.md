@@ -2,7 +2,7 @@
  
 A college project on how JSON Web Tokens work in a Django REST Framework API, how well they hold up against tampered and expired tokens, and how they compare with Django's normal session login.
 
-Live demo: [add Render link]
+Live demo: https://jwt-lab-tvqn.onrender.com
 
 Team: Dhruv Parekh (E021), Parv Jain (E022), Jash Vakharia (E023), Himanshu Thakkar (E062)
 
