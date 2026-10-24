@@ -1,71 +1,80 @@
-# JWT Lab: JWT Authentication in Django REST Framework
+# JWT Authentication in Django REST Framework
 
-A Django REST Framework API secured with SimpleJWT, and a React page that demonstrates it live:
-log in, inspect the token, fetch protected dog breeds from [The Dog API](https://thedogapi.com/),
-attack the API with tampered and expired tokens, and compare JWT logout with session logout.
+A college project on how JSON Web Tokens work in a Django REST Framework API, how well they hold up against tampered and expired tokens, and how they compare with Django's normal session login.
 
-**Live demo:** _add your Render link here_ (demo login: `demo` / `DogsAreGreat!2026`)
+Live demo: [add Render link]
 
-## What it shows
+Team: Dhruv Parekh (E021), Parv Jain (E022), Jash Vakharia (E023), Himanshu Thakkar (E062)
 
-| Step on the page | What happens | Result |
-|---|---|---|
-| 1. Log in | Username + password → access token (5 min) + refresh token (1 day); optional auto-refresh before expiry | 200 |
-| 2. Look inside the token | Header, payload and signature, decoded, with an expiry countdown | — |
-| 3. Fetch protected data | Dog breeds through the API, only with a valid access token | 200 / 401 |
-| 4. Attack the API | Nine attacks (changed user ID, extended expiry, corrupted signature, `alg: none`, forged key, wrong token type, expired token…) plus a token editor to write your own; refresh-token replay; password guessing | 401, 429 |
-| 5. Where to keep the token | A simulated XSS script steals the token from localStorage, but not from page memory or an HttpOnly cookie | stolen vs safe |
-| 6. Log out | JWT: refresh token blacklisted, access token still works until expiry. Session: cookie dead at once | 200 vs 403 |
-| Research answers | Structure of a JWT; access vs refresh token; JWT vs session storage and risks | — |
+## About the project
 
-## Project layout
+The API lets a user log in and get two tokens from SimpleJWT: an access token that lasts 5 minutes and a refresh token that lasts 1 day. The access token is needed to read dog breed data, which the server fetches from [The Dog API](https://thedogapi.com/). Logging out puts the refresh token on a blacklist so it cannot be used again.
 
-```
-backend/    Django + DRF + SimpleJWT API, 72 automated tests (see backend/README.md)
-  frontend_dist/   the built React app, served by Django at /
-frontend/   React source (Vite)
-postman/    Postman collection with 27 demo requests
-render.yaml one-click deployment to Render
-```
+We also added Django session login to the same server so the two methods could be tested side by side.
 
-## Run it on your computer
+The main things we wanted to find out:
+
+- Can the API be fooled by a token that has been edited, forged or has expired?
+- What actually happens to each kind of login when the user logs out?
+- Where should a browser keep a token, and what are the risks of each option?
+
+## What we found
+
+- Every edited or fake token was rejected with 401. This included changing the user ID, pushing the expiry date forward, breaking or removing the signature, the "alg: none" trick, and signing with a guessed key.
+- Expired tokens were rejected exactly on time.
+- After logout the refresh token stopped working straight away, but the access token kept working until its 5 minutes ran out.
+- A session cookie stopped working the moment the user logged out.
+- A token saved in localStorage could be read by a script running on the page. Tokens kept in memory and HttpOnly cookies could not.
+
+## The demo page
+
+The live site walks through the project in six steps:
+
+1. Log in and get the two tokens
+2. See what is inside a token (header, payload and signature)
+3. Load dog breeds with and without a valid token
+4. Try different attacks on the API, or edit the token yourself
+5. Compare where a token can be stored
+6. Log out with JWT and with sessions and compare the results
+
+Demo login: `demo` / `DogsAreGreat!2026`
+
+The site is on Render's free plan, so if nobody has opened it for a while the first load can take about a minute.
+
+## Built with
+
+Python, Django, Django REST Framework, SimpleJWT, SQLite, React, Postman and The Dog API. Hosted on Render.
+
+## Running it locally
 
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env      # then add two different random keys (see backend/README.md)
+cp .env.example .env
+```
+
+Open `.env` and fill in `DJANGO_SECRET_KEY`, `JWT_SIGNING_KEY` (two different random strings) and your `DOG_API_KEY`. Then:
+
+```bash
 python manage.py migrate
 python manage.py create_demo_user
 python manage.py runserver
 ```
 
-Open http://127.0.0.1:8000/ for the React page. Run the tests with `python manage.py test -v 2`.
+The site will be at http://127.0.0.1:8000/
 
-### Changing the frontend
-
-The built page is already in `backend/frontend_dist`, so Node is only needed if you edit the React code:
+To run the tests:
 
 ```bash
-cd frontend
-npm install
-npm run dev      # http://localhost:5173, with /api forwarded to Django on port 8000
-npm run build    # writes the new build into backend/frontend_dist; commit it
+python manage.py test
 ```
 
-## Deploy (Render, free)
+There are 72 tests and all of them pass. The `postman` folder has a collection of 27 requests that can be imported into Postman.
 
-1. Push this repository to GitHub.
-2. On [render.com](https://render.com), sign in with GitHub and choose **New → Blueprint**, then pick this repository.
-3. Render reads `render.yaml`. When asked, paste your Dog API key into `DOG_API_KEY`. The Django and JWT keys are generated automatically.
-4. Click **Apply**. After the build finishes, your site is live at `https://<name>.onrender.com`.
+## Folders
 
-Free Render services sleep after 15 minutes without visitors; the first visit after that takes about a minute to wake up. The database resets on each restart, and the demo user is recreated automatically.
-
-## Security notes
-
-- Signing key and API key come from environment variables, never from the code.
-- Only HS256 is accepted; the key must be 32+ characters and differ from Django's `SECRET_KEY`.
-- The browser keeps tokens in memory, not `localStorage`, so a malicious script cannot read them from storage.
-- Login is throttled to 5 attempts per minute per IP, using the real client IP behind Render's proxy.
-- The Dog API key stays on the server and never appears in a response.
+- `backend` has the Django project and the tests
+- `frontend` has the React code for the demo page
+- `postman` has the Postman collection
